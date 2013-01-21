@@ -534,6 +534,11 @@ class SearchQuerySet(object):
         qs._flat = flat
         return qs
 
+    def custom_score(self, script, params=None, lang=None):
+        clone = self._clone()
+        clone.query.add_custom_score(script, params, lang)
+        return clone
+
     # Utility methods.
 
     def _clone(self, klass=None):
