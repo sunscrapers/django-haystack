@@ -71,4 +71,3 @@ def generate_bounding_box(bottom_left, top_right):
     east, lat_2 = top_right.get_coords()
     min_lat, max_lat = min(lat_1, lat_2), max(lat_1, lat_2)
     return ((min_lat, west), (max_lat, east))
-
