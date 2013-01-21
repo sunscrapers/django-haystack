@@ -234,7 +234,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                             narrow_queries=None, spelling_query=None,
                             within=None, dwithin=None, distance_point=None,
                             models=None, limit_to_registered_models=None,
-                            result_class=None):
+                            result_class=None, custom_score=None):
         index = haystack.connections[self.connection_alias].get_unified_index()
         content_field = index.document_field
 
@@ -457,6 +457,14 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
         if not kwargs['query']['filtered'].get('filter'):
             kwargs['query'] = kwargs['query']['filtered']['query']
 
+        if custom_score:
+            new_kwargs = {
+                'query': {
+                    'custom_score': custom_score.copy()
+                } 
+            }
+            new_kwargs['query']['custom_score']['query'] = kwargs['query'].copy()
+            return new_kwargs 
         return kwargs
 
     @log_query
@@ -686,6 +694,22 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
 # Sucks that this is almost an exact copy of what's in the Solr backend,
 # but we can't import due to dependencies.
 class ElasticsearchSearchQuery(BaseSearchQuery):
+    def __init__(self, **kwargs):
+        super(ElasticsearchSearchQuery, self).__init__(**kwargs)
+        self.custom_score = {}
+
+    def _clone(self, **kwargs):
+        clone = super(ElasticsearchSearchQuery, self)._clone(**kwargs)
+        clone.custom_score = self.custom_score.copy()
+        return clone
+
+    def add_custom_score(self, script, params=None, lang='native'):
+        self.custom_score['script'] = script
+        if params:
+            self.custom_score['params'] = params
+        if lang:
+            self.custom_score['lang'] = lang
+    
     def matching_all_fragment(self):
         return '*:*'
 
@@ -865,6 +889,7 @@ class ElasticsearchSearchQuery(BaseSearchQuery):
         if spelling_query:
             search_kwargs['spelling_query'] = spelling_query
 
+	search_kwargs['custom_score'] = self.custom_score
         return search_kwargs
 
     def run(self, spelling_query=None, **kwargs):
