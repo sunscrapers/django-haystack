@@ -458,11 +458,9 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
             kwargs['query'] = kwargs['query']['filtered']['query']
 
         if custom_score:
-            new_kwargs = {
-                'query': {
-                    'custom_score': custom_score.copy()
-                } 
-            }
+            new_kwargs = kwargs.copy()
+            new_kwargs['query'] = {}
+            new_kwargs['query']['custom_score'] = custom_score.copy()
             new_kwargs['query']['custom_score']['query'] = kwargs['query'].copy()
             return new_kwargs 
         return kwargs
