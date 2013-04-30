@@ -234,6 +234,20 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
             else:
                 self.log.error("Failed to clear Elasticsearch index: %s", e)
 
+    def _get_query_string_content(self, content_field, query_string):
+        query_string_content = {
+            'default_operator': DEFAULT_OPERATOR,
+            'query': query_string,
+            'analyze_wildcard': True,
+            'auto_generate_phrase_queries': True,
+        }
+        search_fields = getattr(settings, 'HAYSTACK_SEARCH_FIELDS', False)
+        if search_fields:
+            query_string_content['fields'] = search_fields
+        else:
+            query_string_content['default_field'] = content_field
+        return query_string_content
+
     def build_search_kwargs(self, query_string, sort_by=None, start_offset=0, end_offset=None,
                             fields='', highlight=False, facets=None,
                             date_facets=None, query_facets=None,
@@ -255,21 +269,17 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                 },
             }
         else:
+            query_string_content = self._get_query_string_content(content_field, query_string)
             kwargs = {
                 'query': {
                     'filtered': {
                         'query': {
-                            'query_string': {
-                                'default_field': content_field,
-                                'default_operator': DEFAULT_OPERATOR,
-                                'query': query_string,
-                                'analyze_wildcard': True,
-                                'auto_generate_phrase_queries': True,
-                            },
+                            'query_string': query_string_content
                         },
                     },
                 },
             }
+
 
         if fields:
             if isinstance(fields, (list, set)):
@@ -541,9 +551,11 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                         },
                     }
                 }
+            search_fields = getattr(settings, 'HAYSTACK_SEARCH_FIELDS', False)
+            if search_fields:
+                body['filter']['fquery']['query']['query_string']['fields'] = search_fields
         else:
             body = {}
-
 
         if start_offset is not None:
             params['search_from'] = start_offset
